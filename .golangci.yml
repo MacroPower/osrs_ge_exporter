@@ -145,3 +145,11 @@ issues:
       linters:
         - dupl
         - promlinter
+
+    - source: ^(\s+)log\..+\.Log\(
+      linters:
+        - errcheck
+
+    - source: '[ ](log\.)?Logger[ ]'
+      linters:
+        - ireturn

@@ -160,7 +160,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	if err != nil {
 		up = float64(0)
 		e.queryFailures.Inc()
-		_ = log.Error(e.logger).Log("msg", "Collection failed", "err", err)
+		log.Error(e.logger).Log("msg", "Collection failed", "err", err)
 	}
 	e.up.Set(up)
 	e.totalScrapes.Inc()

@@ -68,7 +68,7 @@ func main() {
 			</body>
 			</html>`))
 		if err != nil {
-			_ = log.Error(logger).Log("msg", "Failed writing response", "err", err)
+			log.Error(logger).Log("msg", "Failed writing response", "err", err)
 		}
 	})
 
@@ -80,9 +80,9 @@ func main() {
 		Handler:           mux,
 	}
 
-	_ = log.Info(logger).Log("msg", "Listening", "address", cli.Address)
+	log.Info(logger).Log("msg", "Listening", "address", cli.Address)
 	if err := server.ListenAndServe(); err != nil {
-		_ = log.Error(logger).Log("msg", "HTTP server error", "err", err)
+		log.Error(logger).Log("msg", "HTTP server error", "err", err)
 		cliCtx.Exit(1)
 	}
 }
