@@ -43,7 +43,7 @@ func (r *Client) doRequest(
 	req.Header.Set("User-Agent", "https://github.com/MacroPower/osrs_ge_exporter")
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("failed request: %w", err)
+		return nil, 0, fmt.Errorf("failed request: %w", err)
 	}
 	data, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
