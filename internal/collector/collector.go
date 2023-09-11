@@ -18,14 +18,16 @@ const (
 )
 
 type Exporter struct {
-	ItemValue      *prometheus.GaugeVec
-	ItemHigh5m     *prometheus.GaugeVec
-	ItemLow5m      *prometheus.GaugeVec
-	ItemHighLatest *prometheus.GaugeVec
-	ItemLowLatest  *prometheus.GaugeVec
-	ItemHighAlch   *prometheus.GaugeVec
-	ItemLowAlch    *prometheus.GaugeVec
-	ItemLimit      *prometheus.GaugeVec
+	ItemValue        *prometheus.GaugeVec
+	ItemHigh5m       *prometheus.GaugeVec
+	ItemLow5m        *prometheus.GaugeVec
+	ItemHighVolume5m *prometheus.GaugeVec
+	ItemLowVolume5m  *prometheus.GaugeVec
+	ItemHighLatest   *prometheus.GaugeVec
+	ItemLowLatest    *prometheus.GaugeVec
+	ItemHighAlch     *prometheus.GaugeVec
+	ItemLowAlch      *prometheus.GaugeVec
+	ItemLimit        *prometheus.GaugeVec
 
 	mu            sync.Mutex
 	up            prometheus.Gauge
@@ -71,6 +73,24 @@ func NewExporter(client *client.PriceClient, timeout time.Duration, logger log.L
 				Subsystem: subsystem,
 				Name:      "item_low_5m",
 				Help:      "Low value of an item (5m avg).",
+			},
+			labels,
+		),
+		ItemHighVolume5m: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_high_volume_5m",
+				Help:      "Traded volume of an item (5m).",
+			},
+			labels,
+		),
+		ItemLowVolume5m: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_low_volume_5m",
+				Help:      "Traded volume of an item (5m).",
 			},
 			labels,
 		),
@@ -158,6 +178,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.ItemValue.Reset()
 	e.ItemHigh5m.Reset()
 	e.ItemLow5m.Reset()
+	e.ItemHighVolume5m.Reset()
+	e.ItemLowVolume5m.Reset()
 	e.ItemHighLatest.Reset()
 	e.ItemLowLatest.Reset()
 	e.ItemHighAlch.Reset()
@@ -177,6 +199,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.ItemValue.Collect(ch)
 	e.ItemHigh5m.Collect(ch)
 	e.ItemLow5m.Collect(ch)
+	e.ItemHighVolume5m.Collect(ch)
+	e.ItemLowVolume5m.Collect(ch)
 	e.ItemHighLatest.Collect(ch)
 	e.ItemLowLatest.Collect(ch)
 	e.ItemHighAlch.Collect(ch)
@@ -227,6 +251,12 @@ func (e *Exporter) scrape() error {
 			}
 			if avgItem.AvgLowPrice != nil {
 				e.ItemLow5m.WithLabelValues(labels...).Set(float64(*avgItem.AvgLowPrice))
+			}
+			if avgItem.HighPriceVolume != nil {
+				e.ItemHighVolume5m.WithLabelValues(labels...).Set(float64(*avgItem.HighPriceVolume))
+			}
+			if avgItem.LowPriceVolume != nil {
+				e.ItemLowVolume5m.WithLabelValues(labels...).Set(float64(*avgItem.LowPriceVolume))
 			}
 		}
 
