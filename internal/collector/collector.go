@@ -155,6 +155,15 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.mu.Lock() // To protect metrics from concurrent collects.
 	defer e.mu.Unlock()
 
+	e.ItemValue.Reset()
+	e.ItemHigh5m.Reset()
+	e.ItemLow5m.Reset()
+	e.ItemHighLatest.Reset()
+	e.ItemLowLatest.Reset()
+	e.ItemHighAlch.Reset()
+	e.ItemLowAlch.Reset()
+	e.ItemLimit.Reset()
+
 	up := float64(1)
 	err := e.scrape()
 	if err != nil {
@@ -202,18 +211,32 @@ func (e *Exporter) scrape() error {
 			item.Icon,
 		}
 		e.ItemValue.WithLabelValues(labels...).Set(float64(item.Value))
-		e.ItemHighAlch.WithLabelValues(labels...).Set(dereferenceOrDefault(item.Highalch))
-		e.ItemLowAlch.WithLabelValues(labels...).Set(dereferenceOrDefault(item.Lowalch))
-		e.ItemLimit.WithLabelValues(labels...).Set(dereferenceOrDefault(item.Limit))
+		if item.Highalch != nil {
+			e.ItemHighAlch.WithLabelValues(labels...).Set(float64(*item.Highalch))
+		}
+		if item.Lowalch != nil {
+			e.ItemLowAlch.WithLabelValues(labels...).Set(float64(*item.Lowalch))
+		}
+		if item.Limit != nil {
+			e.ItemLimit.WithLabelValues(labels...).Set(float64(*item.Limit))
+		}
 
 		if avgItem, ok := avg5m.Data[fmt.Sprint(item.ID)]; ok {
-			e.ItemHigh5m.WithLabelValues(labels...).Set(dereferenceOrDefault(avgItem.AvgHighPrice))
-			e.ItemLow5m.WithLabelValues(labels...).Set(dereferenceOrDefault(avgItem.AvgLowPrice))
+			if avgItem.AvgHighPrice != nil {
+				e.ItemHigh5m.WithLabelValues(labels...).Set(float64(*avgItem.AvgHighPrice))
+			}
+			if avgItem.AvgLowPrice != nil {
+				e.ItemLow5m.WithLabelValues(labels...).Set(float64(*avgItem.AvgLowPrice))
+			}
 		}
 
 		if latestItem, ok := latest.Data[fmt.Sprint(item.ID)]; ok {
-			e.ItemHighLatest.WithLabelValues(labels...).Set(dereferenceOrDefault(latestItem.High))
-			e.ItemLowLatest.WithLabelValues(labels...).Set(dereferenceOrDefault(latestItem.Low))
+			if latestItem.High != nil {
+				e.ItemHighLatest.WithLabelValues(labels...).Set(float64(*latestItem.High))
+			}
+			if latestItem.Low != nil {
+				e.ItemLowLatest.WithLabelValues(labels...).Set(float64(*latestItem.Low))
+			}
 		}
 	}
 
@@ -226,12 +249,4 @@ func boolToString(b bool) string {
 	}
 
 	return "false"
-}
-
-func dereferenceOrDefault(i *int) float64 {
-	if i == nil {
-		return -1
-	}
-
-	return float64(*i)
 }
