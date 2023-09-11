@@ -84,7 +84,7 @@ linters:
     - importas
     - ineffassign
     - interfacebloat
-    # - ireturn # Required for kitlog wrapper.
+    - ireturn
     - lll
     - loggercheck
     - maintidx
@@ -101,7 +101,7 @@ linters:
     - nonamedreturns
     - nosprintfhostport
     - paralleltest
-    - prealloc
+    # - prealloc # Unnessesary.
     - predeclared
     - promlinter
     - reassign
