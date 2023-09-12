@@ -18,16 +18,22 @@ const (
 )
 
 type Exporter struct {
-	ItemValue        *prometheus.GaugeVec
-	ItemHigh5m       *prometheus.GaugeVec
-	ItemLow5m        *prometheus.GaugeVec
-	ItemHighVolume5m *prometheus.GaugeVec
-	ItemLowVolume5m  *prometheus.GaugeVec
-	ItemHighLatest   *prometheus.GaugeVec
-	ItemLowLatest    *prometheus.GaugeVec
-	ItemHighAlch     *prometheus.GaugeVec
-	ItemLowAlch      *prometheus.GaugeVec
-	ItemLimit        *prometheus.GaugeVec
+	ItemValue          *prometheus.GaugeVec
+	ItemHigh5m         *prometheus.GaugeVec
+	ItemLow5m          *prometheus.GaugeVec
+	ItemHighVolume5m   *prometheus.GaugeVec
+	ItemLowVolume5m    *prometheus.GaugeVec
+	ItemHigh1h         *prometheus.GaugeVec
+	ItemLow1h          *prometheus.GaugeVec
+	ItemHighVolume1h   *prometheus.GaugeVec
+	ItemLowVolume1h    *prometheus.GaugeVec
+	ItemHighLatest     *prometheus.GaugeVec
+	ItemHighLatestTime *prometheus.GaugeVec
+	ItemLowLatest      *prometheus.GaugeVec
+	ItemLowLatestTime  *prometheus.GaugeVec
+	ItemHighAlch       *prometheus.GaugeVec
+	ItemLowAlch        *prometheus.GaugeVec
+	ItemLimit          *prometheus.GaugeVec
 
 	mu            sync.Mutex
 	up            prometheus.Gauge
@@ -94,6 +100,42 @@ func NewExporter(client *client.PriceClient, timeout time.Duration, logger log.L
 			},
 			labels,
 		),
+		ItemHigh1h: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_high_1h",
+				Help:      "High value of an item (1h avg).",
+			},
+			labels,
+		),
+		ItemLow1h: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_low_1h",
+				Help:      "Low value of an item (1h avg).",
+			},
+			labels,
+		),
+		ItemHighVolume1h: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_high_volume_1h",
+				Help:      "Traded volume of an item (1h).",
+			},
+			labels,
+		),
+		ItemLowVolume1h: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_low_volume_1h",
+				Help:      "Traded volume of an item (1h).",
+			},
+			labels,
+		),
 		ItemHighLatest: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
@@ -103,12 +145,30 @@ func NewExporter(client *client.PriceClient, timeout time.Duration, logger log.L
 			},
 			labels,
 		),
+		ItemHighLatestTime: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_high_latest_time",
+				Help:      "Unix timestamp of the latest transaction.",
+			},
+			labels,
+		),
 		ItemLowLatest: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
 				Subsystem: subsystem,
 				Name:      "item_low_latest",
 				Help:      "Low value of an item (latest).",
+			},
+			labels,
+		),
+		ItemLowLatestTime: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "item_low_latest_time",
+				Help:      "Unix timestamp of the latest transaction.",
 			},
 			labels,
 		),
@@ -180,8 +240,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.ItemLow5m.Reset()
 	e.ItemHighVolume5m.Reset()
 	e.ItemLowVolume5m.Reset()
+	e.ItemHigh1h.Reset()
+	e.ItemLow1h.Reset()
+	e.ItemHighVolume1h.Reset()
+	e.ItemLowVolume1h.Reset()
 	e.ItemHighLatest.Reset()
+	e.ItemHighLatestTime.Reset()
 	e.ItemLowLatest.Reset()
+	e.ItemLowLatestTime.Reset()
 	e.ItemHighAlch.Reset()
 	e.ItemLowAlch.Reset()
 	e.ItemLimit.Reset()
@@ -201,8 +267,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.ItemLow5m.Collect(ch)
 	e.ItemHighVolume5m.Collect(ch)
 	e.ItemLowVolume5m.Collect(ch)
+	e.ItemHigh1h.Collect(ch)
+	e.ItemLow1h.Collect(ch)
+	e.ItemHighVolume1h.Collect(ch)
+	e.ItemLowVolume1h.Collect(ch)
 	e.ItemHighLatest.Collect(ch)
+	e.ItemHighLatestTime.Collect(ch)
 	e.ItemLowLatest.Collect(ch)
+	e.ItemLowLatestTime.Collect(ch)
 	e.ItemHighAlch.Collect(ch)
 	e.ItemLowAlch.Collect(ch)
 	e.ItemLimit.Collect(ch)
@@ -221,6 +293,10 @@ func (e *Exporter) scrape() error {
 	avg5m, err := e.client.Get5m(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get 5m avg: %w", err)
+	}
+	avg1h, err := e.client.Get1h(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get 1h avg: %w", err)
 	}
 	latest, err := e.client.GetLatest(ctx, nil)
 	if err != nil {
@@ -260,12 +336,33 @@ func (e *Exporter) scrape() error {
 			}
 		}
 
+		if avgItem, ok := avg1h.Data[fmt.Sprint(item.ID)]; ok {
+			if avgItem.AvgHighPrice != nil {
+				e.ItemHigh1h.WithLabelValues(labels...).Set(float64(*avgItem.AvgHighPrice))
+			}
+			if avgItem.AvgLowPrice != nil {
+				e.ItemLow1h.WithLabelValues(labels...).Set(float64(*avgItem.AvgLowPrice))
+			}
+			if avgItem.HighPriceVolume != nil {
+				e.ItemHighVolume1h.WithLabelValues(labels...).Set(float64(*avgItem.HighPriceVolume))
+			}
+			if avgItem.LowPriceVolume != nil {
+				e.ItemLowVolume1h.WithLabelValues(labels...).Set(float64(*avgItem.LowPriceVolume))
+			}
+		}
+
 		if latestItem, ok := latest.Data[fmt.Sprint(item.ID)]; ok {
 			if latestItem.High != nil {
 				e.ItemHighLatest.WithLabelValues(labels...).Set(float64(*latestItem.High))
 			}
 			if latestItem.Low != nil {
 				e.ItemLowLatest.WithLabelValues(labels...).Set(float64(*latestItem.Low))
+			}
+			if latestItem.HighTime != nil {
+				e.ItemHighLatestTime.WithLabelValues(labels...).Set(float64(*latestItem.HighTime))
+			}
+			if latestItem.LowTime != nil {
+				e.ItemLowLatestTime.WithLabelValues(labels...).Set(float64(*latestItem.LowTime))
 			}
 		}
 	}
